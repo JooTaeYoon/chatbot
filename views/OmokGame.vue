@@ -1,33 +1,72 @@
-<template>
+<template v-for="i in 15" :key="'row' - +i">
   <div class="body">
     <h1>오목</h1>
     <div
       class="board"
       :style="{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(15, 1fr)',
+        padding: '10px',
+        justifyContent: 'center',
+        alignItems: 'center',
       }"
     >
       <div
-        class="vline"
-        v-for="i in 15"
-        :key="i"
-        :style="{ left: (i * 100) / 16 + '%' }"
-      ></div>
+        v-for="(row, rowIndex) in 15"
+        :key="rowIndex"
+        :style="{
+          gridRow: '1 / 16',
+          gridColumn: row,
+          width: '2px',
+          height: '100%',
+          backgroundColor: 'black',
+        }"
+        :class="vline"
+      >
+        {{ rowIndex }}
+      </div>
       <div
-        v-for="i in 15"
-        :key="'h' + i"
-        class="hline"
-        :style="{ top: (i * 100) / 16 + '%' }"
-      ></div>
+        v-for="(col, colIndex) in 15"
+        :key="colIndex"
+        :style="{
+          gridColumn: '1/16',
+          gridRow: col,
+          width: '100%',
+          height: '2px',
+          backgroundColor: 'black',
+        }"
+      >
+        {{ colIndex }}
+      </div>
+
+      <template v-for="i in 15" :key="'row-' + i">
+        <div
+          v-for="j in 15"
+          :key="'col-' + j"
+          class="stone"
+          :class="stones"
+          :style="{
+            gridRow: i,
+            gridColumn: j,
+            zIndex: 1,
+          }"
+          @click="placeStone(i - 1, j - 1)"
+        ></div>
+      </template>
 
       <div
-        class="stone"
-        v-for="(stone, colIndex) in row"
-        :key="`${rowIndex} - ${colIndex}`"
+        v-for="([_x, _y], index) in [
+          [3, 3],
+          [3, 11],
+          [11, 3],
+          [11, 11],
+        ]"
+        :key="index"
         :style="{
-          top: (rowIndex * 100) / 15 + '%',
-          left: (colIndex * 100) / 15 + '%',
+          width: '10px',
+          height: '10px',
+          borderRadius: '50%',
+          backgroundColor: 'black',
+          gridColumn: _x + 1,
+          gridRow: _y + 1,
         }"
       ></div>
     </div>
@@ -45,14 +84,15 @@ export default {
         .fill(null)
         .map((_) => Array(15).fill(null)),
       client: '',
+      x: '',
+      y: '',
     };
   },
-  methods: {},
   mounted() {
     const socket = new SockJS('http://localhost:8080/ws');
     this.client = new Client({
       webSocketFactory: () => socket,
-      reconnectDelay: 3000,
+      reconnectDelay: 1000,
       onConnect: () => {
         console.log('접속 성공');
       },
@@ -61,8 +101,28 @@ export default {
         console.error('Additional details: ' + frame.body);
       },
     });
+    this.client.activate(console.log('🔥')); // 🔥 여기 필수
 
-    this.client.activate(); // 🔥 여기 필수
+    // for (let i = 0; i < 15; i++) {
+    //   for (let j = 0; j < 15; j++) {
+    //     const stone = document.createElement('div');
+    //     stone.className = 'stone';
+    //     stone.style.gridRow = i + 1;
+    //     stone.style.gridColumn = j + 1;
+    //     board.appendChild(stone);
+    //     this.stones[i][j] = stone;
+    //     stone.addEventListener('click', () => {
+    //       (this.x = i), (this.y = j);
+    //     });
+    //   }
+    // }
+  },
+  methods: {
+    placeStone(x, y) {
+      this.stones[x][y] = 'placed stone';
+      console.log(this.stones[x][y]);
+      console.log(this.stones);
+    },
   },
 };
 </script>
@@ -87,31 +147,23 @@ export default {
 }
 .board {
   display: grid;
-  grid-template-columns: repeat(15, 1fr);
-  grid-template-rows: repeat(15, 1fr);
-
+  grid-template-columns: repeat(15, 1fr); /* 15개의 열 */
+  grid-template-rows: repeat(15, 1fr); /* 15개의 행 */
   width: 800px;
   height: 800px;
   background-color: var(--board-color);
+
   justify-items: center;
   align-items: center;
 }
-
-.vline {
-  width: 2px;
-  height: 100%;
-  background-color: black;
-}
-.hline {
-  width: 100%;
-  height: 2px;
-  background-color: black;
-}
 .stone {
-  border-radius: 50%;
-  background-color: white;
   width: 45px;
   height: 45px;
-  opacity: 0.1;
+  border-radius: 50%;
+  background-color: white;
+  opacity: 0;
+}
+.stone:hover {
+  opacity: 0.3;
 }
 </style>

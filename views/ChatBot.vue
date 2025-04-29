@@ -9,28 +9,30 @@
       </button>
 
       <!--  -->
-      <div class="chat-messages">
-        <div v-for="(msg, index) in messages" :key="index" class="message">
-          <p>{{ msg }}</p>
+      <div class="chat-messages" v-show="sceneChat">
+        <div
+          v-for="(msg, index) in message"
+          :key="index"
+          :class="['message', msg.sender === 'user' ? 'user' : 'bot']"
+        >
+          <p>{{ msg.text }}</p>
         </div>
       </div>
       <!--  -->
       <div class="input-container" v-show="chatBox">
-        <input
-          type="text"
-          class="inputTag"
-          v-model="input"
-          @keydown.enter="enterKey($event)"
-        /><button class="btn send" @click="enterKey($event)">확인</button>
+        <input type="text" class="inputTag" v-model="input" /><button
+          class="btn send"
+          @click="sendBtn()"
+        >
+          확인
+        </button>
       </div>
       <div v-if="chatScenario_1">
-        <button class="btn" @click="inputCheckBox($event)">
+        <button class="btn" @click="inputCheckBox($event)" v-if="chatStart">
           안녕하세요 😀
         </button>
       </div>
-      <div class="showing" v-if="showingMassage">
-        관리자가 직접 답 해줍니다.
-      </div>
+      <div class="showing" v-if="showingMassage">아직 준비 중 입니다.</div>
     </div>
   </div>
 </template>
@@ -45,7 +47,9 @@ export default {
       chatBox: false,
       input: '',
       chatScenario_1: false,
-      message: [],
+      message: [{ text: '', sender: '' }],
+      chatStart: true,
+      sceneChat: false,
     };
   },
   mounted() {
@@ -53,6 +57,34 @@ export default {
     this.showingMassage = false;
   },
   methods: {
+    sendBtn() {
+      this.chatStart = false;
+      if (!this.input.trim()) return;
+      const text = { text: this.input, sender: 'user' };
+
+      this.message.push(text);
+      const params = { questionKeyword: this.input, sender: 'user' };
+
+      axios
+        .post('http://localhost:8080/api/chat/message', params)
+        .then((res) => {
+          this.sceneChat = true;
+
+          const botMessage = {
+            text: res.data.answer,
+            sender: 'bot',
+          };
+          this.message.push(botMessage);
+          this.input = '';
+          this.$nextTick(() => {
+            const chattingBox = document.querySelector('.chat-messages');
+            chattingBox.scrollTop = chattingBox.scrollHeight;
+          });
+        })
+        .catch((err) => {
+          console.log(err.message);
+        });
+    },
     showMessage() {
       this.showingMassage = !this.showingMassage;
       this.chattingBtn = true;
@@ -69,23 +101,35 @@ export default {
       }
     },
     enterKey(_event) {
+      this.chatStart = false;
       if (!this.input.trim()) return;
-      const userMessage = this.input;
-      this.message.push(userMessage);
-      const params = { questionKeyword: this.input };
+      const text = { text: this.input, sender: 'user' };
 
+      this.message.push(text);
+      const params = { questionKeyword: this.input, sender: 'user' };
+      console.log(params);
       axios
         .post('http://localhost:8080/api/chat/message', params)
         .then((res) => {
-          const botMessage = res.data.answer;
+          this.sceneChat = true;
+          console.log(this.sceneChat);
+          const botMessage = {
+            text: res.data.answer,
+            sender: 'bot',
+          };
           this.message.push(botMessage);
           this.input = '';
-          console.log(this.message);
+          console.log(botMessage);
+          this.$nextTick(() => {
+            const chattingBox = document.querySelector('.chat-messages');
+            chattingBox.scrollTop = chattingBox.scrollHeight;
+          });
         })
         .catch((err) => {
           console.log(err.message);
         });
     },
+
     inputCheckBox(event) {
       this.input = event.target.textContent;
     },
@@ -140,9 +184,6 @@ export default {
   bottom: 15px;
   margin: auto;
   opacity: 1;
-
-  transition: opacity 0.5s ease; /* 서서히 나타나게 할 transition */
-  transition: opacity 0.5s ease, visibility 0.5s ease; /* opacity와 visibility를 서서히 변하게 함 */
 }
 
 .inputTag {
@@ -159,6 +200,66 @@ export default {
   border-radius: 10px;
   max-width: 250px;
   margin-bottom: 5px;
-  align-self: flex-start;
+  padding: 10px 15px;
+  word-break: break-word;
+  position: relative;
+  display: flex;
+  margin: 5px 10px;
+}
+
+.user {
+  align-items: flex-end;
+  background-color: #aee1f9;
+  justify-content: flex-end;
+}
+.bot {
+  align-items: flex-start;
+  background-color: #ececec;
+  justify-content: flex-start;
+}
+
+.user p {
+  background-color: #aee1f9;
+  border-bottom-right-radius: 0;
+}
+
+.bot p {
+  background-color: #ececec;
+  border-bottom-left-radius: 0;
+}
+
+.user p::after {
+  content: '';
+  position: absolute;
+  right: -10px;
+  top: 10px;
+  border-width: 10px 0 10px 10px;
+  border-style: solid;
+  border-color: transparent #aee1f9 transparent transparent;
+}
+
+.bot p::after {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 10px;
+  border-width: 10px 10px 10px 0;
+  border-style: solid;
+  border-color: transparent #ececec transparent transparent;
+}
+.message p {
+  max-width: 70%;
+  padding: 10px 15px;
+  border-radius: 15px;
+  word-break: break-word;
+  position: relative;
+}
+.chat-messages {
+  display: flex;
+  width: 100%;
+  padding: 10px;
+  overflow: auto;
+  /* flex: 1; */
+  flex-direction: column;
 }
 </style>

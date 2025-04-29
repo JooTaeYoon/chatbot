@@ -13,7 +13,7 @@
       <button class="chatbot-btn" @click="chatBotClick()">
         <img src="../images/chatbot.svg" alt="chatbot" />
       </button>
-      <ChatBot class="chatbot" v-model="showChatBot"></ChatBot>
+      <ChatBot class="chatbot" v-show="showChatBot"></ChatBot>
     </footer>
   </div>
 </template>
@@ -33,12 +33,10 @@ export default {
     };
   },
   methods: {
-    topBtn(event) {
-      console.log(event);
+    topBtn(_event) {
       this.showComponent = true;
     },
     chatBotClick() {
-      console.log('click');
       this.showChatBot = !this.showChatBot;
     },
   },
@@ -105,6 +103,7 @@ footer {
 }
 .chatbot-btn {
   all: unset; /* 버튼 기본 스타일 없애기 */
+  z-index: 1;
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -119,6 +118,17 @@ img {
   height: 100%;
   object-fit: cover;
 }
+footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+  border: 1px solid red;
+}
 .chatbot {
+  position: fixed; /* fixed로 변경 */
+  bottom: 140px; /* footer 위로 조금 띄우기 */
+  right: 40px; /* 오른쪽 여백 */
+  z-index: 10; /* 버튼보다 뒤에 가면 안 되니까 높여 */
 }
 </style>
