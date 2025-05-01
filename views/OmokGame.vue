@@ -1,4 +1,4 @@
-<template v-for="i in 15" :key="'row' - +i">
+<template>
   <div class="body">
     <h1>오목</h1>
     <div
@@ -7,6 +7,7 @@
         padding: '10px',
         justifyContent: 'center',
         alignItems: 'center',
+        pointerEvents: gameOver ? 'none' : 'auto',
       }"
     >
       <div
@@ -19,7 +20,6 @@
           height: '100%',
           backgroundColor: 'black',
         }"
-        :class="vline"
       >
         {{ rowIndex }}
       </div>
@@ -41,14 +41,17 @@
         <div
           v-for="j in 15"
           :key="'col-' + j"
-          class="stone"
-          :class="stones"
+          :class="[
+            'stone',
+            stones[i - 1][j - 1],
+            stones[i - 1][j - 1] ? 'placed' : '',
+          ]"
           :style="{
             gridRow: i,
             gridColumn: j,
             zIndex: 1,
           }"
-          @click="placeStone(i - 1, j - 1)"
+          @click="placeStone(i - 1, j - 1, turnPlayer)"
         ></div>
       </template>
 
@@ -70,22 +73,38 @@
         }"
       ></div>
     </div>
+    <WinModal
+      v-show="showModal"
+      @close="showModal = false"
+      @call-parent="reGame"
+    ></WinModal>
   </div>
 </template>
 
 <script>
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import bus from '../src/event-bus.js';
+import WinModal from './WinModal.vue';
 
 export default {
+  components: { WinModal },
   data() {
     return {
       stones: Array(15)
-        .fill(null)
-        .map((_) => Array(15).fill(null)),
+        .fill()
+        .map(() => Array(15).fill(null)),
+
       client: '',
       x: '',
       y: '',
+      player: {
+        BLACK: 'black',
+        WHITE: 'white',
+      },
+      turnPlayer: true,
+      showModal: false,
+      gameOver: false,
     };
   },
   mounted() {
@@ -102,26 +121,61 @@ export default {
       },
     });
     this.client.activate(console.log('🔥')); // 🔥 여기 필수
-
-    // for (let i = 0; i < 15; i++) {
-    //   for (let j = 0; j < 15; j++) {
-    //     const stone = document.createElement('div');
-    //     stone.className = 'stone';
-    //     stone.style.gridRow = i + 1;
-    //     stone.style.gridColumn = j + 1;
-    //     board.appendChild(stone);
-    //     this.stones[i][j] = stone;
-    //     stone.addEventListener('click', () => {
-    //       (this.x = i), (this.y = j);
-    //     });
-    //   }
-    // }
   },
   methods: {
-    placeStone(x, y) {
-      this.stones[x][y] = 'placed stone';
-      console.log(this.stones[x][y]);
-      console.log(this.stones);
+    reGame() {
+      this.showModal = false;
+      this.stones = Array(15)
+        .fill()
+        .map(() => Array(15).fill(null));
+      this.gameOver = false;
+    },
+    placeStone(x, y, _turnPlayer) {
+      if (this.stones[x][y]) return;
+
+      this.stones[x][y] = _turnPlayer ? 'black' : 'white';
+      this.turnPlayer = !_turnPlayer;
+
+      this.win(x, y);
+    },
+    countInDirection(x, y, dx, dy) {
+      let count = 0;
+      const color = this.stones[x][y];
+      let nx = x + dx;
+      let ny = y + dy;
+
+      while (this.inBoard(nx, ny) && this.stones[nx][ny] === color) {
+        count++;
+        nx += dx;
+        ny += dy;
+      }
+      return count;
+    },
+    inBoard(x, y) {
+      return x >= 0 && x < 15 && y >= 0 && y < 15;
+    },
+    win(x, y) {
+      const direction = [
+        [1, 0],
+        [0, 1],
+        [1, 1],
+        [-1, -1],
+      ];
+
+      for (const [i, j] of direction) {
+        const total =
+          1 +
+          this.countInDirection(x, y, i, j) +
+          this.countInDirection(x, y, -i, -j);
+        if (total === 5) {
+          this.showModal = true;
+          bus.emit('winner', { winnerPlayer: this.stones[x][y] });
+          this.gameOver = true;
+          // const $board = document.querySelector('.board');
+          // $board.style.pointerEvents = 'none';
+          return true;
+        }
+      }
     },
   },
 };
@@ -165,5 +219,23 @@ export default {
 }
 .stone:hover {
   opacity: 0.3;
+}
+.black:hover {
+  background-color: black;
+}
+.white:hover {
+  background-color: white;
+}
+
+.stone.black {
+  background-color: black;
+}
+
+.stone.white {
+  background-color: white;
+}
+.stone.placed {
+  opacity: 1;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
 }
 </style>
