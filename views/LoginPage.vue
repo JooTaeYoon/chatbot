@@ -51,13 +51,13 @@ export default {
     },
     register() {
       this.$router.push('/signup');
-      console.log('dlrj');
+      console.log('register 함수!');
     },
   },
 };
 </script>
 
-<style>
+<style scoped>
 html,
 body {
   height: 100%;

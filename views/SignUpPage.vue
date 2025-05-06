@@ -56,7 +56,6 @@ export default {
     },
     register() {
       this.$router.push('/signup');
-      console.log('dlrj');
     },
   },
 };

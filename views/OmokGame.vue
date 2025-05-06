@@ -78,6 +78,7 @@
       @close="showModal = false"
       @call-parent="reGame"
     ></WinModal>
+    <div class="enter" v-show="showPart">상대방이 입장 하였습니다.</div>
   </div>
 </template>
 
@@ -95,7 +96,7 @@ export default {
         .fill()
         .map(() => Array(15).fill(null)),
 
-      client: '',
+      client: null,
       x: '',
       y: '',
       player: {
@@ -105,6 +106,10 @@ export default {
       turnPlayer: true,
       showModal: false,
       gameOver: false,
+      connected: false,
+      sessionId: '',
+      positionSubscription: '',
+      showPart: false,
     };
   },
   mounted() {
@@ -113,16 +118,46 @@ export default {
       webSocketFactory: () => socket,
       reconnectDelay: 1000,
       onConnect: () => {
-        console.log('접속 성공');
+        this.connected = true;
+        this.firstConnected();
       },
       onStompError: (frame) => {
         console.error('Broker reported error: ' + frame.headers['message']);
         console.error('Additional details: ' + frame.body);
       },
     });
-    this.client.activate(console.log('🔥')); // 🔥 여기 필수
+    this.client.activate(); // 🔥 여기 필수
+  },
+  beforeUnmount() {
+    if (this.positionSubscription) {
+      console.log(this.positionSubscription.unsubscribe());
+      this.positionSubscription.unsubscribe();
+    }
   },
   methods: {
+    firstConnected() {
+      // const payload = {
+      //   sessionId: '',
+      // };
+
+      // this.client.publish({
+      //   destination: '/app/session/init',
+      //   body: JSON.stringify(payload),
+      //   headers: { 'content-type': 'application/json' },
+      // });
+
+      this.positionSubscription = this.client.subscribe(
+        `/topic/position`,
+        (message) => {
+          const { sessionId, x, y, color } = JSON.parse(message.body);
+          if (this.sessionId === sessionId) {
+            console.log(x, y, this.sessionId, color, '여기냐');
+            this.placeStone(x, y, '');
+          }
+        }
+      );
+    },
+
     reGame() {
       this.showModal = false;
       this.stones = Array(15)
@@ -130,14 +165,30 @@ export default {
         .map(() => Array(15).fill(null));
       this.gameOver = false;
     },
+
     placeStone(x, y, _turnPlayer) {
       if (this.stones[x][y]) return;
 
+      const payload = {
+        x,
+        y,
+      };
+
+      if (this.connected && this.client) {
+        this.client.publish({
+          destination: '/app/my_position',
+          body: JSON.stringify(payload),
+          headers: { 'content-type': 'application/json' },
+        });
+      } else {
+        console.warn('stomp 연결 안 됨');
+      }
+
       this.stones[x][y] = _turnPlayer ? 'black' : 'white';
       this.turnPlayer = !_turnPlayer;
-
       this.win(x, y);
     },
+
     countInDirection(x, y, dx, dy) {
       let count = 0;
       const color = this.stones[x][y];
@@ -159,7 +210,7 @@ export default {
         [1, 0],
         [0, 1],
         [1, 1],
-        [-1, -1],
+        [-1, 1],
       ];
 
       for (const [i, j] of direction) {
@@ -171,8 +222,6 @@ export default {
           this.showModal = true;
           bus.emit('winner', { winnerPlayer: this.stones[x][y] });
           this.gameOver = true;
-          // const $board = document.querySelector('.board');
-          // $board.style.pointerEvents = 'none';
           return true;
         }
       }

@@ -2,16 +2,18 @@
   <div id="body">
     <header>
       <div class="headerBar">
-        <span><p>오목</p></span>
+        <button class="top_btn" @click="showingShort($event)">쇼츠</button>
         <button class="top_btn" @click="topBtn($event)">오목</button>
       </div>
     </header>
     <main>
-      <OmokGame v-if="showComponent"></OmokGame>
+      <!-- <OmokGame v-if="showComponent"></OmokGame> -->
+      <RoomList v-show="showComponent"></RoomList>
+      <ShortView v-show="showShort"></ShortView>
     </main>
     <footer>
       <button class="chatbot-btn" @click="chatBotClick()">
-        <img src="../images/chatbot.svg" alt="chatbot" />
+        <img src="/images/chatbot.svg" alt="chatbot" />
       </button>
       <ChatBot class="chatbot" v-show="showChatBot"></ChatBot>
     </footer>
@@ -19,22 +21,30 @@
 </template>
 
 <script>
-import OmokGame from './OmokGame.vue';
 import ChatBot from './ChatBot.vue';
+import ShortView from './ShortView.vue';
+import RoomList from './RoomList.vue';
 export default {
   components: {
-    OmokGame,
     ChatBot,
+    ShortView,
+    RoomList,
   },
   data() {
     return {
       showComponent: false,
       showChatBot: false,
+      showShort: false,
     };
   },
   methods: {
     topBtn(_event) {
       this.showComponent = true;
+      this.showShort = false;
+    },
+    showingShort() {
+      this.showShort = true;
+      this.showComponent = false;
     },
     chatBotClick() {
       this.showChatBot = !this.showChatBot;
@@ -72,6 +82,7 @@ export default {
 }
 
 .top_btn {
+  cursor: pointer;
   background: none;
   border: none;
   font-size: 20px;

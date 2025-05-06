@@ -167,6 +167,7 @@ export default {
 }
 .btn {
   width: 150px;
+  cursor: pointer;
   height: 45px;
 }
 .send {
